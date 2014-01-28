@@ -4,13 +4,15 @@
 </head>
 <body>
 
-</body>
+	<div id="drawing"></div>
 
+</body>
+<script type="text/javascript" src="deps/svg.min.js"></script>
 <script type="text/javascript" src="oh.js"></script>
 <script type="text/javascript" src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
 <script type="text/javascript">
 $(function(){
-	ObjectHandles.init($("body"))
+	ObjectHandles.init("drawing")
 })
 </script>
 </html>

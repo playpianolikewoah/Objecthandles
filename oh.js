@@ -10,8 +10,71 @@
 		ObjectHandles = root.ObjectHandles = {};
 	}
 
+	Object.defineProperty(Object.prototype, "__uniqueId", {
+		writable: true
+	});
+	Object.defineProperty(Object.prototype, "uniqueId", {
+		get: function() {
+		if (this.__uniqueId == undefined)
+			this.__uniqueId = guid();
+		return this.__uniqueId;
+	}
+	});
+	
+	var guid = function() {
+		var S4 = function() {
+			return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
+		};
+
+		return (S4()+S4()+"-"+S4()+"-"+S4()+"-"+S4()+"-"+S4()+S4()+S4());
+	}
+
 	// Current version of the library. Keep in sync with `package.json`.
 	ObjectHandles.VERSION = '0.0.1';
+
+	if (!Object.prototype.watch) {
+		Object.defineProperty(Object.prototype, "watch", {
+			  enumerable: false
+			, configurable: true
+			, writable: false
+			, value: function (prop, handler) {
+				var
+				  oldval = this[prop]
+				, newval = oldval
+				, getter = function () {
+					return newval;
+				}
+				, setter = function (val) {
+					oldval = newval;
+					return newval = handler.call(this, prop, oldval, val);
+				}
+				;
+				
+				if (delete this[prop]) { // can't watch constants
+					Object.defineProperty(this, prop, {
+						  get: getter
+						, set: setter
+						, enumerable: true
+						, configurable: true
+					});
+				}
+			}
+		});
+	}
+	 
+	// object.unwatch
+	if (!Object.prototype.unwatch) {
+		Object.defineProperty(Object.prototype, "unwatch", {
+			  enumerable: false
+			, configurable: true
+			, writable: false
+			, value: function (prop) {
+				var val = this[prop];
+				delete this[prop]; // remove accessors
+				this[prop] = val;
+			}
+		});
+	}
 
 	var Point = function(x,y){
 		if(!x) x = 0;
@@ -67,7 +130,7 @@
 			isResizeUp:isResizeUp,
 			isResizeDown:isResizeDown,
 			isResizeLeft:isResizeLeft,
-			isResizeRight,isResizeRight,
+			isResizeRight:isResizeRight,
 			isRotate:isRotate,
 			isMove:isMove
 		}
@@ -107,7 +170,7 @@
 		}
 
 		var removeFromSelection = function(model){
-			var ind:int = currentlySelected.indexOf(model);
+			var ind = currentlySelected.indexOf(model);
 			if( ind == -1 ) { return; }
 
 			currentlySelected.splice(ind,1);
@@ -117,7 +180,7 @@
 		}
 
 		var clearSelection = function(){
-			var evt 'SelectionEvent.SELECTION_CLEARED';
+			var evt = 'SelectionEvent.SELECTION_CLEARED';
 			currentlySelected = [];
 			$(this).trigger(evt);   
 		}
@@ -156,12 +219,12 @@
 	}
 
 	var DragGeometry = function(x,y,w,h,r,locked){
-		var x = 		typeof x !== 'undefined' ? x : 0;
-		var y = 		typeof y !== 'undefined' ? y : 0;
-		var w = 		typeof w !== 'undefined' ? w : 0;
-		var h = 		typeof h !== 'undefined' ? h : 0;
-		var r =		 	typeof r !== 'undefined' ? r : 0;
-		var locked = 	typeof locked !== 'undefined' ? locked : 0;
+		x = 		typeof x !== 'undefined' ? x : 0;
+		y = 		typeof y !== 'undefined' ? y : 0;
+		w = 		typeof w !== 'undefined' ? w : 0;
+		h = 		typeof h !== 'undefined' ? h : 0;
+		r =		 	typeof r !== 'undefined' ? r : 0;
+		locked = 	typeof locked !== 'undefined' ? locked : 0;
 		var rectangle = function(){
 			return Rectangle(x,y,w,h)
 		}
@@ -192,6 +255,8 @@
         
 	// Key = a model, value = an array of constraints for that model.
 	var constraints = {};
+
+	ObjectHandles.modelList = [];
         
 	// A dictionary of the geometry of the models before the current drag operation started.                
 	// This is set at the beginning of the user gesture.
@@ -224,17 +289,23 @@
 
 	ObjectHandles.Point = Point;
 
-	ObjectHandles.init = function($container){
-		if(!$container){
+	ObjectHandles.container;
+
+	ObjectHandles.init = function(container){
+		if(!container){
 			// throw "Need a container"
-			throw "Missing $container."
+			throw "Missing container."
 		}
-		ObjectHandles.$container = $container;
+
+		ObjectHandles.SVG = SVG(container);
+		// var rect = ObjectHandles.SVG.rect(50,50).move(100,100).fill('#f09');
+
+		ObjectHandles.$container = $("#" + container);
 		ObjectHandles.selectionManager = SelectionManager();
 		ObjectHandles.selectionManager.addToSelected({shape:'circle'});
-		ObjectHandles.selectionManager.on('SelectionEvent:ADDED_TO_SELECTION', onSelectionAdded);
-		ObjectHandles.selectionManager.on('SelectionEvent:REMOVED_FROM_SELECTION', onSelectionRemoved);
-		ObjectHandles.selectionManager.on('SelectionEvent:SELECTION_CLEARED', onSelectionCleared);
+		$(ObjectHandles.selectionManager).on('SelectionEvent:ADDED_TO_SELECTION', onSelectionAdded);
+		$(ObjectHandles.selectionManager).on('SelectionEvent:REMOVED_FROM_SELECTION', onSelectionRemoved);
+		$(ObjectHandles.selectionManager).on('SelectionEvent:SELECTION_CLEARED', onSelectionCleared);
 
 		multiSelectHandles.push(HandleDescription(HandleRoles.RESIZE_UP + HandleRoles.RESIZE_LEFT,
 			zero,
@@ -307,6 +378,56 @@
 	var onSelectionCleared = function(){
 		setupHandles();
 		lastSelectedModel = null;
+	}
+
+	var registerComponent = function(dataModel,
+		visualDisplay,
+		handleDescriptions,
+		captureKeyEvents,
+		customConstraints
+		){
+		handleDescriptions = 	typeof handleDescriptions !== 'undefined' ? handleDescriptions : null;
+		captureKeyEvents = 		typeof captureKeyEvents !== 'undefined' ? captureKeyEvents : true;
+		customConstraints = 	typeof customConstraints !== 'undefined' ? customConstraints : null;
+
+		ObjectHandles.modelList.push(dataModel);
+		if(visualDisplay){
+			visualDisplay.on('mousedown',onComponentMouseDown);
+			$(visualDisplay).on('SelectionEvent:SELECTED',handleSelection);
+			if(captureKeyEvents){
+				$(visualDisplay).on('KeyboardEvent:KEY_DOWN',onKeyDown);
+			}
+			models[visualDisplay.uniqueId] = dataModel;
+		}
+		var s = '';
+		for(s in dataModel){
+			dataModel.watch(s,onModelChange);
+		}
+
+		visuals[dataModel] = visualDisplay;
+
+		if(handleDescriptions){
+			handleDefinitions[dataModel.uniqueId] = handleDescriptions;
+		}
+		if(customConstraints){
+			constraints[dataModel.uniqueId] = customConstraints;
+		}
+	}
+
+	var onModelChange = function(prop){
+		if(prop == 'x' || prop == 'y' || 'width' == )
+	}
+
+	var onComponentMouseDown = function(){
+
+	}
+
+	var handleSelection = function(){
+
+	}
+
+	var onkeyDown = function(){
+
 	}
 
 
