@@ -1,6 +1,5 @@
 (function(){
 	var root = this;
-	var ObjectHandles;
 
 	// The top-level namespace. All public ObjectHandles classes and modules will
 	// be attached to this. Exported for both the browser and the server.
@@ -27,13 +26,54 @@
 		}
 	}
 
+	var SelectionManager = function(){
+		var currentlySelected = []
+		var addToSelected = function(model){
+			if(currentlySelected.indexOf(model) != -1){return} //already selected
+			if(currentlySelected.length > 0){
+				var locked = isSelectionLocked();
+			}
+		}
+
+		var isSelectionLocked = function(){
+			var s = '';
+			for(s in currentlySelected){
+				var model = currentlySelected[s]
+				if(model.hasOwnProperty('isLocked')){
+					if(model.isLocked){
+						return true;
+					}
+				}
+			}
+		}
+	}
+
 	var Matrix = function(){
 
 		return {}
 	}
 
-	var DragGeometry = function(){
-		return {}
+	var Rectangle = function(x,y,w,h){
+		return {
+			x:x,
+			y:y,
+			w:w,
+			h:h
+		}
+	}
+
+	var DragGeometry = function(x,y,w,h,r,locked){
+		var rectangle = function(){
+			return Rectangle(x,y,w,h)
+		}
+		return {
+			x:x,
+			y:y,
+			w:w,
+			h:h,
+			locked:locked,
+			rectangle:rectangle
+		}
 	}
 
 	var zero = Point(0,0);
@@ -80,6 +120,14 @@
 	var mouseDownRotation = 0;
 
 	ObjectHandles.Point = Point;
+
+	ObjectHandles.init = function(container){
+		if(!container){
+			// throw "Need a container"
+		}
+		ObjectHandles.container = container;
+		console.log('initted')
+	}
 
 
 }).call(this)
