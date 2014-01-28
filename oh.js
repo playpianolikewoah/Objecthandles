@@ -26,8 +26,71 @@
 		}
 	}
 
+	var HandleRoles = function(){
+		var RESIZE_UP = 1;
+		var RESIZE_DOWN = 2;
+		var RESIZE_LEFT = 4;
+		var RESIZE_RIGHT = 8;
+		var ROTATE = 16;
+		var MOVE = 32;
+
+		var isResize = function(val){
+			return isResizeDown(val) || isResizeLeft(val) || isResizeRight(val) || isResizeUp(val);
+		};
+		var isResizeUp = function(val){
+			return (val & RESIZE_UP) == RESIZE_UP;
+		};
+		var isResizeDown = function(val){
+			return (val & RESIZE_DOWN) == RESIZE_DOWN;
+		};
+		var isResizeLeft = function(val){
+			return (val & RESIZE_LEFT) == RESIZE_LEFT;
+		};
+		var isResizeRight = function(val){
+			return (val & RESIZE_RIGHT) == RESIZE_RIGHT;
+		};
+		var isRotate = function(val){
+			return (val & ROTATE) == ROTATE;
+		};
+		var isMove = function(val){
+			return (val & MOVE) == MOVE;
+		};
+
+		return {
+			RESIZE_UP:RESIZE_UP,
+			RESIZE_DOWN:RESIZE_DOWN,
+			RESIZE_LEFT:RESIZE_LEFT,
+			RESIZE_RIGHT:RESIZE_RIGHT,
+			ROTATE:ROTATE,
+			MOVE:MOVE,
+			isResize:isResize,
+			isResizeUp:isResizeUp,
+			isResizeDown:isResizeDown,
+			isResizeLeft:isResizeLeft,
+			isResizeRight,isResizeRight,
+			isRotate:isRotate,
+			isMove:isMove
+		}
+	}
+
+	var HandleDescription = function(role,percentageOffset,offset,handleFactory,constraint){
+		var role = 				typeof role !== 'undefined' ? role : 0;
+		var percentageOffset = 	typeof percentageOffset !== 'undefined' ? percentageOffset : Point();
+		var offset = 			typeof offset !== 'undefined' ? offset : Point();
+		var handleFactory = 	typeof handleFactory !== 'undefined' ? handleFactory : null;
+		var constraint = 		typeof constraint !== 'undefined' ? constraint : null;
+
+		return {
+			role:role,
+			percentageOffset:percentageOffset,
+			offset:offset,
+			handleFactory:handleFactory,
+			constraint:constraint
+		}
+	}
+
 	var SelectionManager = function(){
-		var currentlySelected = []
+		var currentlySelected = [];
 		var addToSelected = function(model){
 			if(currentlySelected.indexOf(model) != -1){return} //already selected
 			if(currentlySelected.length > 0){
@@ -40,7 +103,23 @@
 
 			currentlySelected.push(model);
 			var evt = 'SelectionEvent:ADDED_TO_SELECTION'
-			
+			$(this).trigger(evt);
+		}
+
+		var removeFromSelection = function(model){
+			var ind:int = currentlySelected.indexOf(model);
+			if( ind == -1 ) { return; }
+
+			currentlySelected.splice(ind,1);
+
+			var evt = 'SelectionEvent:REMOVED_FROM_SELECTION';
+			$(this).trigger(evt);
+		}
+
+		var clearSelection = function(){
+			var evt 'SelectionEvent.SELECTION_CLEARED';
+			currentlySelected = [];
+			$(this).trigger(evt);   
 		}
 
 		var isSelectionLocked = function(){
@@ -54,10 +133,16 @@
 				}
 			}
 		}
+		
+		return {
+			currentlySelected:currentlySelected,
+			addToSelected:addToSelected,
+			removeFromSelection:removeFromSelection,
+			clearSelection:clearSelection
+		}
 	}
 
 	var Matrix = function(){
-
 		return {}
 	}
 
@@ -129,12 +214,32 @@
 
 	ObjectHandles.Point = Point;
 
-	ObjectHandles.init = function(container){
-		if(!container){
+	ObjectHandles.init = function($container){
+		if(!$container){
 			// throw "Need a container"
+			throw "Missing $container."
 		}
-		ObjectHandles.container = container;
-		console.log('initted')
+		ObjectHandles.$container = $container;
+		ObjectHandles.selectionManager = SelectionManager();
+		ObjectHandles.selectionManager.addToSelected({shape:'circle'});
+		ObjectHandles.selectionManager.on('SelectionEvent:ADDED_TO_SELECTION', onSelectionAdded);
+		ObjectHandles.selectionManager.on('SelectionEvent:REMOVED_FROM_SELECTION', onSelectionRemoved);
+		ObjectHandles.selectionManager.on('SelectionEvent:SELECTION_CLEARED', onSelectionCleared);
+
+		multiSelectHandles.push()
+	}
+
+	var onSelectionAdded = function(){
+		setupHandles();
+	}
+
+	var onSelectionRemoved = function(){
+		setupHandles();
+	}
+
+	var onSelectionCleared = function(){
+		setupHandles();
+		lastSelectedModel = null;
 	}
 
 
