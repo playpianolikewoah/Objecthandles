@@ -32,7 +32,15 @@
 			if(currentlySelected.indexOf(model) != -1){return} //already selected
 			if(currentlySelected.length > 0){
 				var locked = isSelectionLocked();
+				if(model.hasOwnProperty("isLocked")){
+					if(locked && !model.isLocked){return}
+					if(!locked && model.isLocked){return}
+				}
 			}
+
+			currentlySelected.push(model);
+			var evt = 'SelectionEvent:ADDED_TO_SELECTION'
+			
 		}
 
 		var isSelectionLocked = function(){
