@@ -156,6 +156,12 @@
 	}
 
 	var DragGeometry = function(x,y,w,h,r,locked){
+		var x = 		typeof x !== 'undefined' ? x : 0;
+		var y = 		typeof y !== 'undefined' ? y : 0;
+		var w = 		typeof w !== 'undefined' ? w : 0;
+		var h = 		typeof h !== 'undefined' ? h : 0;
+		var r =		 	typeof r !== 'undefined' ? r : 0;
+		var locked = 	typeof locked !== 'undefined' ? locked : 0;
 		var rectangle = function(){
 			return Rectangle(x,y,w,h)
 		}
@@ -169,7 +175,7 @@
 		}
 	}
 
-	var zero = Point(0,0);
+	var zero = Point();
 
 	var handles = {};
 	var models = {};
@@ -197,6 +203,8 @@
         
 	// Key = a model, value = an array of HandleDescription objects;
 	var handleDefinitions = {}; 
+
+	var defaultHandles = [];
         
 	// Array of unused, visible=false handles
 	var handleCache = [];
@@ -212,6 +220,8 @@
 	var containerMouseDownPoint = Point();
 	var mouseDownRotation = 0;
 
+	var multiSelectModel = DragGeometry();
+
 	ObjectHandles.Point = Point;
 
 	ObjectHandles.init = function($container){
@@ -226,7 +236,64 @@
 		ObjectHandles.selectionManager.on('SelectionEvent:REMOVED_FROM_SELECTION', onSelectionRemoved);
 		ObjectHandles.selectionManager.on('SelectionEvent:SELECTION_CLEARED', onSelectionCleared);
 
-		multiSelectHandles.push()
+		multiSelectHandles.push(HandleDescription(HandleRoles.RESIZE_UP + HandleRoles.RESIZE_LEFT,
+			zero,
+			zero));
+		multiSelectHandles.push(HandleDescription(HandleRoles.RESIZE_UP,
+			Point(50,0),
+			zero));
+		multiSelectHandles.push(HandleDescription(HandleRoles.RESIZE_UP + HandleRoles.RESIZE_RIGHT,
+			Point(100,0),
+			zero));
+		multiSelectHandles.push(HandleDescription(HandleRoles.RESIZE_UP + HandleRoles.RESIZE_RIGHT,
+			Point(100,50),
+			zero));
+		multiSelectHandles.push(HandleDescription(HandleRoles.RESIZE_DOWN + HandleRoles.RESIZE_RIGHT,
+			Point(100,100),
+			zero));
+		multiSelectHandles.push(HandleDescription(HandleRoles.RESIZE_DOWN,
+			Point(50,100),
+			zero));
+		multiSelectHandles.push(HandleDescription(HandleRoles.RESIZE_DOWN + HandleRoles.RESIZE_LEFT,
+			Point(0,100),
+			zero));
+		multiSelectHandles.push(HandleDescription(HandleRoles.RESIZE_LEFT,
+			Point(0,50),
+			zero));
+		multiSelectHandles.push(HandleDescription(HandleRoles.ROTATE,
+			Point(100,50),
+			Point(20,0)));
+
+		defaultHandles.push(HandleDescription(HandleRoles.RESIZE_UP + HandleRoles.RESIZE_LEFT,
+			zero,
+			zero));
+		defaultHandles.push(HandleDescription(HandleRoles.RESIZE_UP,
+			Point(50,0),
+			zero));
+		defaultHandles.push(HandleDescription(HandleRoles.RESIZE_UP + HandleRoles.RESIZE_RIGHT,
+			Point(100,0),
+			zero));
+		defaultHandles.push(HandleDescription(HandleRoles.RESIZE_UP + HandleRoles.RESIZE_RIGHT,
+			Point(100,50),
+			zero));
+		defaultHandles.push(HandleDescription(HandleRoles.RESIZE_DOWN + HandleRoles.RESIZE_RIGHT,
+			Point(100,100),
+			zero));
+		defaultHandles.push(HandleDescription(HandleRoles.RESIZE_DOWN,
+			Point(50,100),
+			zero));
+		defaultHandles.push(HandleDescription(HandleRoles.RESIZE_DOWN + HandleRoles.RESIZE_LEFT,
+			Point(0,100),
+			zero));
+		defaultHandles.push(HandleDescription(HandleRoles.RESIZE_LEFT,
+			Point(0,50),
+			zero));
+		defaultHandles.push(HandleDescription(HandleRoles.ROTATE,
+			Point(100,50),
+			Point(20,0)));
+
+
+		registerComponent(multiSelectModel, null, multiSelectHandles, false);
 	}
 
 	var onSelectionAdded = function(){
